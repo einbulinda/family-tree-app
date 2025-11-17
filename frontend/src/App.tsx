@@ -46,7 +46,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="/auauthorized" element={<Unauthorized />} />
+            <Route path="/unauthorized" element={<Unauthorized />} />
           </Routes>
         </div>
       </Router>
