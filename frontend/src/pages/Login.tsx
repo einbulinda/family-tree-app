@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
@@ -19,12 +19,21 @@ const Login: React.FC = () => {
     try {
       await login(email, password);
       navigate("/dashboard");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+    } catch (err: any) {
+      // 👇 CHANGED LINES: Better error handling to get the actual backend message
+      if (err.response) {
+        // Server responded with error status
+        const errorMessage = err.response.data?.message || "Login failed";
+        setError(errorMessage);
+      } else {
+        setError(err.message || "An unexpected error occured.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => console.log(error), [error]);
 
   return (
     <div className="flex min-h-full flex-col justify-center px-6 py-12 lg:px-8">
@@ -62,6 +71,7 @@ const Login: React.FC = () => {
                 required
                 value={email}
                 autoComplete="email"
+                onChange={(e) => setEmail(e.target.value)}
                 className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
               />
             </div>
@@ -77,7 +87,7 @@ const Login: React.FC = () => {
               </label>
               <div className="text-sm">
                 <a
-                  href="#"
+                  href="/password-reset"
                   className="font-semibold text-indigo-600 hover:text-indigo-500"
                 >
                   Forgot password?

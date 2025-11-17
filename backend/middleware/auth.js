@@ -1,4 +1,4 @@
-import { verify } from "jsonwebtoken";
+const { verify } = require("jsonwebtoken");
 
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];

@@ -32,8 +32,19 @@ const Register: React.FC = () => {
       setTimeout(() => {
         navigate("/login");
       }, 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+    } catch (err: any) {
+      if (err.response) {
+        // Server responded with error status
+        const errorMessage =
+          err.response.data?.message || "Registration failed";
+        setError(errorMessage);
+      } else if (err.request) {
+        // Request was made but no response received
+        setError("Network error. Please check your connection.");
+      } else {
+        // Something else happened
+        setError(err.message || "An unexpected error occurred");
+      }
     } finally {
       setIsLoading(false);
     }

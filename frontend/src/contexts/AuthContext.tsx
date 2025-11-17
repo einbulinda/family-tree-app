@@ -6,13 +6,18 @@ import React, {
   ReactNode,
   useMemo,
 } from "react";
-import { User } from "../types";
+import { LoginResponse, RegisterResponse, User } from "../types";
+import api from "../services/api";
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, name: string, password: string) => Promise<void>;
+  register: (
+    email: string,
+    name: string,
+    password: string
+  ) => Promise<RegisterResponse | undefined>;
   logout: () => void;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -37,8 +42,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   );
   const [isLoading, setIsLoading] = useState(true);
 
-  const backendUrl = `${process.env.SITE_URL}:${process.env.BE_PORT}/api`;
-
   useEffect(() => {
     //Check if user is logged in on app start
     const storedToken = localStorage.getItem("token");
@@ -55,23 +58,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await fetch(`${backendUrl}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
+      const response = await api.post<LoginResponse>("/auth/login", {
+        email,
+        password,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setToken(data.token);
-        setUser(data.user);
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
+      if (response.data) {
+        setToken(response.data.token);
+        setUser(response.data.user);
+        localStorage.setItem("token", response.data.token);
+        localStorage.setItem("user", JSON.stringify(response.data.user));
       } else {
-        throw new Error(data.message || "Login failed");
+        throw new Error("Login failed");
       }
     } catch (error) {
       console.error("Login error:", error);
@@ -81,19 +79,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const register = async (email: string, name: string, password: string) => {
     try {
-      const response = await fetch(`${backendUrl}/auth/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, name, password }),
+      const response = await api.post<RegisterResponse>("/auth/register", {
+        email,
+        name,
+        password,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) throw new Error(data.message || "Registration failed");
-
-      return data;
+      if (response.data.message) return response.data;
     } catch (error) {
       console.error("Registration error:", error);
       throw error;
