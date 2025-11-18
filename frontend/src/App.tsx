@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import {
   BrowserRouter as Router,
@@ -12,8 +12,17 @@ import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
+import DebugLogs from "./components/DebugLogs";
+import { logger } from "./utils/logger";
 
 function App() {
+  useEffect(() => {
+    logger.info("Application started");
+    return () => {
+      logger.info("Application unmounted");
+    };
+  }, []);
+
   return (
     <AuthProvider>
       <Router>
@@ -48,6 +57,7 @@ function App() {
             />
             <Route path="/unauthorized" element={<Unauthorized />} />
           </Routes>
+          <DebugLogs />
         </div>
       </Router>
     </AuthProvider>
@@ -65,7 +75,7 @@ const Unauthorized: React.FC = () => {
         <p className="text-gray-500">Your role: {user?.role || "not set"}</p>
         <p className="text-gray-500 mb-4">Required role: admin</p>
         <button
-          onClick={() => (window.location.href = "/dashboard")}
+          onClick={() => (globalThis.location.href = "/dashboard")}
           className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
         >
           Go to Dashboard
