@@ -6,6 +6,12 @@ const DebugLogs: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [filterLevel, setFilterLevel] = useState("ALL");
 
+  const levelClasses: Record<string, string> = {
+    ERROR: "bg-red-100 text-red-800",
+    WARN: "bg-yellow-100 text-yellow-800",
+    DEBUG: "bg-gray-100 text-gray-800",
+  };
+
   const logger = getLogger();
 
   useEffect(() => {
@@ -37,7 +43,7 @@ const DebugLogs: React.FC = () => {
     a.download = `family-tree-logs-${new Date().toISOString()}.txt`;
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
+    a.remove();
     URL.revokeObjectURL(url);
   };
 
@@ -95,15 +101,9 @@ const DebugLogs: React.FC = () => {
       <div className="flex-1 overflow-y-auto p-2 text-xs font-mono">
         {logs.slice(-50).map((log, index) => (
           <div
-            key={index}
+            key={`${log.timestamp}-${log.level}-${log.message}-${index}`}
             className={`mb-1 p-1 rounded ${
-              log.level === "ERROR"
-                ? "bg-red-100 text-red-800"
-                : log.level === "WARN"
-                ? "bg-yellow-100 text-yellow-800"
-                : log.level === "DEBUG"
-                ? "bg-gray-100 text-gray-800"
-                : "bg-blue-100 text-blue-800"
+              levelClasses[log.level] ?? "bg-blue-100 text-blue-800"
             }`}
           >
             <span className="text-gray-500">

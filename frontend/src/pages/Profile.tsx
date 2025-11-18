@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../services/api";
+import RelationshipManager from "../components/RelationshipManager";
 
 interface Individual {
   id: number;
@@ -433,6 +434,12 @@ const Profile: React.FC = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Add Relationship Manager */}
+                <RelationshipManager
+                  individual={individual}
+                  onRelationshipsUpdate={fetchProfile}
+                />
               </div>
             )}
           </div>
