@@ -23,7 +23,8 @@ const AdminDashboard: React.FC = () => {
   const [inviteLoading, setInviteLoading] = useState(false);
 
   useEffect(() => {
-    if (user?.role !== "admin") {
+    if (!user || user?.role !== "admin") {
+      console.log("User not admin or not authenticated:", user); // 👈 ADD THIS FOR DEBUGGING
       navigate("/dashboard");
       return;
     }

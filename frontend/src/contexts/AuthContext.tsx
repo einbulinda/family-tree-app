@@ -13,11 +13,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (
-    email: string,
-    name: string,
-    password: string
-  ) => Promise<RegisterResponse | undefined>;
+  register: (email: string, name: string, password: string) => Promise<void>; // 👈 CHANGED: Return Promise<void> ::einbulinda 17/11/2025
   logout: () => void;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -50,7 +46,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       setToken(storedToken);
       const storedUser = localStorage.getItem("user");
       if (storedUser) {
-        setUser(JSON.parse(storedUser));
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+          console.log(
+            "AUTHCONTEXT: Restored user from localStorage:",
+            parsedUser
+          ); // 👈 ADD THIS FOR DEBUGGING
+        } catch (e) {
+          console.error("Error parsing stored user:", e);
+          localStorage.removeItem("user");
+        }
       }
     }
     setIsLoading(false);
@@ -68,6 +74,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         setUser(response.data.user);
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
+        console.log("Logged in user:", response.data.user); // 👈 ADD THIS FOR DEBUGGING
       } else {
         throw new Error("Login failed");
       }
@@ -85,7 +92,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         password,
       });
 
-      if (response.data.message) return response.data;
+      if (response.data.message) return; // Just return successfully - don't log the user in automatically
     } catch (error) {
       console.error("Registration error:", error);
       throw error;
@@ -98,6 +105,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     localStorage.removeItem("token");
     localStorage.removeItem("user");
   };
+
+  // Add this effect to debug when user changes
+  useEffect(() => {
+    console.log("🔄 User state changed:", user);
+  }, [user]);
 
   const value = useMemo(
     () => ({
@@ -112,5 +124,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [user, token, isLoading]
   );
+
+  console.log("AuthContext value:", { user, token, isAuthenticated: !!token }); // 👈 ADD THIS FOR DEBUGGING
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
