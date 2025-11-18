@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { LoginResponse, RegisterResponse, User } from "../types";
 import api from "../services/api";
+import { logger } from "../utils/logger";
 
 interface AuthContextType {
   user: User | null;
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
+    logger.error("useAuth must be used within an AuthProvider");
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
@@ -39,22 +41,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    logger.info("AuthProvider initialized");
     //Check if user is logged in on app start
     const storedToken = localStorage.getItem("token");
     if (storedToken) {
       //TODO: validate token with API call
       setToken(storedToken);
       const storedUser = localStorage.getItem("user");
+      logger.debug("Checking for stored user", { hasUser: !!storedUser });
       if (storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
-          console.log(
-            "AUTHCONTEXT: Restored user from localStorage:",
-            parsedUser
-          ); // 👈 ADD THIS FOR DEBUGGING
+          logger.info("User restored from localStorage", {
+            userId: parsedUser.id,
+            role: parsedUser.role,
+            name: parsedUser.name,
+          });
         } catch (e) {
-          console.error("Error parsing stored user:", e);
+          logger.error("Error parsing stored user:", { error: e });
           localStorage.removeItem("user");
         }
       }
@@ -63,6 +68,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   const login = async (email: string, password: string) => {
+    logger.info("Login attempt", { email });
     try {
       const response = await api.post<LoginResponse>("/auth/login", {
         email,
@@ -74,17 +80,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         setUser(response.data.user);
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
-        console.log("Logged in user:", response.data.user); // 👈 ADD THIS FOR DEBUGGING
+        logger.info("Login successful", {
+          userId: response.data.user.id,
+          role: response.data.user.role,
+          name: response.data.user.name,
+        });
       } else {
+        logger.error("Login failed - no response data");
         throw new Error("Login failed");
       }
     } catch (error) {
+      logger.error("Login error", { error, email });
       console.error("Login error:", error);
       throw error;
     }
   };
 
   const register = async (email: string, name: string, password: string) => {
+    logger.info("Registration attempt", { email, name });
     try {
       const response = await api.post<RegisterResponse>("/auth/register", {
         email,
@@ -92,24 +105,47 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         password,
       });
 
-      if (response.data.message) return; // Just return successfully - don't log the user in automatically
+      if (response.data.message) {
+        logger.info("Registration successful", {
+          email,
+          name,
+          message: response.data.message,
+        });
+        return;
+      } // Just return successfully - don't log the user in automatically
     } catch (error) {
-      console.error("Registration error:", error);
+      logger.error("Registration error", { error, email, name });
       throw error;
     }
   };
 
   const logout = () => {
+    logger.info("Logout initiated", { userId: user?.id, userName: user?.name });
     setToken(null);
     setUser(null);
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+
+    logger.info("User logged out successfully");
   };
 
-  // Add this effect to debug when user changes
+  // Log User state changes
   useEffect(() => {
-    console.log("🔄 User state changed:", user);
+    logger.debug("User state changed", {
+      user,
+      userId: user?.id,
+      userRole: user?.role,
+      userName: user?.name,
+    });
   }, [user]);
+
+  // Log token state changes
+  useEffect(() => {
+    logger.debug("Token state changed", {
+      hasToken: !!token,
+      isAuthenticated: !!token,
+    });
+  }, [token]);
 
   const value = useMemo(
     () => ({
@@ -125,6 +161,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     [user, token, isLoading]
   );
 
-  console.log("AuthContext value:", { user, token, isAuthenticated: !!token }); // 👈 ADD THIS FOR DEBUGGING
+  logger.debug("AuthContext value updated", {
+    hasUser: !!user,
+    hasToken: !!token,
+    isAuthenticated: !!token,
+    userRole: user?.role,
+  });
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
