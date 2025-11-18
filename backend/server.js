@@ -18,11 +18,13 @@ const authRoutes = require("./routes/auth");
 const individualsRoutes = require("./routes/individuals");
 const invitationsRoutes = require("./routes/invitations");
 const relationshipsRoutes = require("./routes/relationships");
+const treeRoutes = require("./routes/tree");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/individuals", individualsRoutes);
 app.use("/api/invitations", invitationsRoutes);
 app.use("/api/relationships", relationshipsRoutes);
+app.use("/api/tree", treeRoutes);
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => {

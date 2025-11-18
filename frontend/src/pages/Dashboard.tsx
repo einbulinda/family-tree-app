@@ -30,6 +30,11 @@ const Dashboard: React.FC = () => {
     navigate("/create-profile");
   };
 
+  const handleTreeDashboard = () => {
+    logger.info("Tree dashboard clicked");
+    navigate("/tree");
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white shadow">
@@ -50,6 +55,12 @@ const Dashboard: React.FC = () => {
                   Admin Panel
                 </button>
               )}
+              <button
+                onClick={handleTreeDashboard}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+              >
+                Tree View
+              </button>
               <button
                 onClick={handleCreateProfile}
                 className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700"

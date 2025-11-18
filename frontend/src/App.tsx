@@ -14,6 +14,8 @@ import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/AdminDashboard";
 import DebugLogs from "./components/DebugLogs";
 import { logger } from "./utils/logger";
+import CreateProfile from "./pages/CreateProfile";
+import TreeDashboard from "./pages/TreeDashboard";
 
 function App() {
   useEffect(() => {
@@ -40,10 +42,26 @@ function App() {
               }
             />
             <Route
+              path="/tree"
+              element={
+                <ProtectedRoute>
+                  <TreeDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/profile/:id"
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/create-profile"
+              element={
+                <ProtectedRoute>
+                  <CreateProfile />
                 </ProtectedRoute>
               }
             />
