@@ -42,13 +42,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   useEffect(() => {
     logger.info("AuthProvider initialized");
+
     //Check if user is logged in on app start
     const storedToken = localStorage.getItem("token");
+    logger.debug("Checking for stored token", { hasToken: !!storedToken });
+
     if (storedToken) {
       //TODO: validate token with API call
       setToken(storedToken);
       const storedUser = localStorage.getItem("user");
       logger.debug("Checking for stored user", { hasUser: !!storedUser });
+
       if (storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser);
@@ -65,6 +69,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       }
     }
     setIsLoading(false);
+    logger.info("AuthProvider initialization complete", {
+      user: !!user,
+      token: !!token,
+      isAuthenticated: !!token,
+    });
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -80,6 +91,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         setUser(response.data.user);
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
+
         logger.info("Login successful", {
           userId: response.data.user.id,
           role: response.data.user.role,

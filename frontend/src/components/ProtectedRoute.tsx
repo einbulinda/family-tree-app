@@ -12,13 +12,27 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requiredRole,
 }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
   logger.debug("ProtectedRoute rendered", {
     isAuthenticated,
     user: !!user,
+    isLoading,
     requiredRole,
     userRole: user?.role,
   });
+
+  //Show loading state while auth is being determined
+  if (isLoading) {
+    logger.debug("ProtectedRoute loading ...");
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     logger.info("Redirecting to login - not authenticated");
@@ -32,20 +46,25 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       });
       return <Navigate to="/unauthorized" replace />;
     }
-  }
 
-  if (user?.role !== requiredRole) {
-    logger.warn("Redirecting to unauthorized - insufficient role", {
+    if (user?.role !== requiredRole) {
+      logger.warn("Redirecting to unauthorized - insufficient role", {
+        userRole: user?.role,
+        requiredRole,
+      });
+      return <Navigate to="/unauthorized" replace />;
+    }
+
+    logger.info("Access granted - user has required role", {
       userRole: user?.role,
       requiredRole,
     });
-    return <Navigate to="/unauthorized" replace />;
-  }
 
-  logger.info("Access granted - user has required role", {
-    userRole: user?.role,
-    requiredRole,
-  });
+    logger.info("Access granted - user has required role", {
+      userRole: user?.role,
+      requiredRole,
+    });
+  }
 
   return <>{children}</>;
 };

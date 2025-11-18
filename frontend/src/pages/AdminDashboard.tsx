@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
+import { logger } from "../utils/logger";
 
 interface Invitation {
   id: number;
@@ -13,7 +14,7 @@ interface Invitation {
 }
 
 const AdminDashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [pendingInvitations, setPendingInvitations] = useState<Invitation[]>(
     []
@@ -23,20 +24,44 @@ const AdminDashboard: React.FC = () => {
   const [inviteLoading, setInviteLoading] = useState(false);
 
   useEffect(() => {
-    if (!user || user?.role !== "admin") {
-      console.log("User not admin or not authenticated:", user); // 👈 ADD THIS FOR DEBUGGING
+    logger.debug("AdminDashboard useEffect", {
+      user: !!user,
+      authLoading,
+      userRole: user?.role,
+    });
+
+    if (authLoading) {
+      logger.debug("AdminDashboard waiting for auth to load");
+      return;
+    }
+
+    if (!user) {
+      logger.error("User is null in AdminDashboard, redirecting to dashboard");
       navigate("/dashboard");
       return;
     }
+
+    if (user.role !== "admin") {
+      logger.error("User is not admin, redirecting to dashboard", {
+        userRole: user.role,
+      });
+      navigate("/dashboard");
+      return;
+    }
+
+    logger.info("User is admin, fetching pending invitations");
     fetchPendingInvitations();
-  }, [user, navigate]);
+  }, [user, authLoading, navigate]);
 
   const fetchPendingInvitations = async () => {
     try {
       const response = await api.get<Invitation[]>("/invitations/pending");
       setPendingInvitations(response.data);
+      logger.info("Fetched pending invitations", {
+        count: response.data.length,
+      });
     } catch (error) {
-      console.error("Error fetching pending invitations:", error);
+      logger.error("Error fetching pending invitations", { error });
     } finally {
       setLoading(false);
     }
@@ -53,9 +78,10 @@ const AdminDashboard: React.FC = () => {
 
       // Refresh the list
       fetchPendingInvitations();
-    } catch (error) {
-      console.error("Error inviting user:", error);
-      alert("Failed to invite user");
+      logger.info("Successfully invited user", { email: newInviteEmail });
+    } catch (error: any) {
+      logger.error("Error inviting user", { error, email: newInviteEmail });
+      alert(error.response?.data?.message || "Failed to invite user");
     } finally {
       setInviteLoading(false);
     }
@@ -66,8 +92,9 @@ const AdminDashboard: React.FC = () => {
       await api.put(`/invitations/approve/${email}`);
       // Refresh the list
       fetchPendingInvitations();
+      logger.info("Successfully approved user", { email });
     } catch (error) {
-      console.error("Error approving user:", error);
+      logger.error("Error approving user", { error, email });
       alert("Failed to approve user");
     }
   };
@@ -84,13 +111,14 @@ const AdminDashboard: React.FC = () => {
       await api.put(`/invitations/reject/${email}`);
       // Refresh the list
       fetchPendingInvitations();
+      logger.info("Successfully rejected user", { email });
     } catch (error) {
-      console.error("Error rejecting invitation:", error);
+      logger.error("Error rejecting invitation", { error, email });
       alert("Failed to reject invitation");
     }
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
