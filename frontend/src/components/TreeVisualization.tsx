@@ -2,6 +2,25 @@ import React, { useEffect, useRef } from "react";
 import * as d3 from "d3";
 import { Individual } from "../types";
 
+// Define the correct type for D3 nodes
+interface SimulationNodeDatum {
+  id: number;
+  name: string;
+  is_alive: boolean;
+  birth_date?: string;
+  death_date?: string;
+  x?: number;
+  y?: number;
+  fx?: number | null;
+  fy?: number | null;
+}
+
+interface SimulationLinkDatum {
+  source: number | SimulationNodeDatum;
+  target: number | SimulationNodeDatum;
+  type: string;
+}
+
 interface TreeVisualizationProps {
   individuals: Individual[];
   relationships: {
@@ -37,34 +56,41 @@ const TreeVisualization: React.FC<TreeVisualizationProps> = ({
       .append("g")
       .attr("transform", "translate(40,0)");
 
-    // Create nodes and links for the tree
-    const nodes = individuals.map((ind) => ({
+    // Create nodes with proper types
+    const nodes: SimulationNodeDatum[] = individuals.map((ind) => ({
       id: ind.id,
       name: `${ind.first_name} ${ind.last_name}`,
       is_alive: ind.is_alive,
       birth_date: ind.birth_date,
       death_date: ind.death_date,
+      x: 0,
+      y: 0,
+      fx: null,
+      fy: null,
     }));
 
-    // Create links based on relationships
-    const links = relationships.map((rel) => ({
+    // Create links with proper types
+    const links: SimulationLinkDatum[] = relationships.map((rel) => ({
       source: rel.source,
       target: rel.target,
       type: rel.type,
     }));
 
-    // Create a force simulation
+    // Create a force simulation with proper typing
     const simulation = d3
-      .forceSimulation(nodes)
+      .forceSimulation<SimulationNodeDatum>(nodes)
       .force(
         "link",
         d3
-          .forceLink(links)
-          .id((d: any) => d.id)
+          .forceLink<SimulationNodeDatum, SimulationLinkDatum>(links) // Fixed: Added second type parameter
+          .id((d) => d.id.toString())
           .distance(100)
       )
-      .force("charge", d3.forceManyBody().strength(-300))
-      .force("center", d3.forceCenter(width / 2, height / 2));
+      .force("charge", d3.forceManyBody<SimulationNodeDatum>().strength(-300))
+      .force(
+        "center",
+        d3.forceCenter<SimulationNodeDatum>(width / 2, height / 2)
+      );
 
     // Add links
     const link = svg
@@ -85,7 +111,7 @@ const TreeVisualization: React.FC<TreeVisualizationProps> = ({
       .data(nodes)
       .join("circle")
       .attr("r", 20)
-      .attr("fill", (d: any) => {
+      .attr("fill", (d) => {
         if (selectedIndividual && d.id === selectedIndividual.id)
           return "#4f46e5";
         return d.is_alive ? "#10b981" : "#9ca3af";
@@ -96,7 +122,7 @@ const TreeVisualization: React.FC<TreeVisualizationProps> = ({
           onIndividualClick(individual);
         }
       })
-      .call(drag(simulation));
+      .call(drag(simulation) as any);
 
     // Add labels
     const label = svg
@@ -107,44 +133,86 @@ const TreeVisualization: React.FC<TreeVisualizationProps> = ({
       .join("text")
       .attr("dx", 12)
       .attr("dy", 4)
-      .text((d: any) => d.name)
+      .text((d) => d.name)
       .attr("font-size", "12px")
       .attr("fill", "#374151");
 
     // Update positions on each tick
     simulation.on("tick", () => {
       link
-        .attr("x1", (d: any) => d.source.x)
-        .attr("y1", (d: any) => d.source.y)
-        .attr("x2", (d: any) => d.target.x)
-        .attr("y2", (d: any) => d.target.y);
+        .attr("x1", (d) => {
+          const source =
+            typeof d.source === "object"
+              ? d.source
+              : nodes.find((n) => n.id === d.source);
+          return source?.x || 0;
+        })
+        .attr("y1", (d) => {
+          const source =
+            typeof d.source === "object"
+              ? d.source
+              : nodes.find((n) => n.id === d.source);
+          return source?.y || 0;
+        })
+        .attr("x2", (d) => {
+          const target =
+            typeof d.target === "object"
+              ? d.target
+              : nodes.find((n) => n.id === d.target);
+          return target?.x || 0;
+        })
+        .attr("y2", (d) => {
+          const target =
+            typeof d.target === "object"
+              ? d.target
+              : nodes.find((n) => n.id === d.target);
+          return target?.y || 0;
+        });
 
-      node.attr("cx", (d: any) => d.x).attr("cy", (d: any) => d.y);
+      node.attr("cx", (d) => d.x || 0).attr("cy", (d) => d.y || 0);
 
-      label.attr("x", (d: any) => d.x).attr("y", (d: any) => d.y);
+      label.attr("x", (d) => d.x || 0).attr("y", (d) => d.y || 0);
     });
 
     // Drag functions
-    function drag(simulation: d3.Simulation<any, undefined>) {
-      function dragstarted(event: any, d: any) {
+    function drag(simulation: d3.Simulation<SimulationNodeDatum, undefined>) {
+      function dragstarted(
+        event: d3.D3DragEvent<
+          SVGCircleElement,
+          SimulationNodeDatum,
+          SimulationNodeDatum
+        >
+      ) {
         if (!event.active) simulation.alphaTarget(0.3).restart();
-        d.fx = d.x;
-        d.fy = d.y;
+        event.subject.fx = event.subject.x;
+        event.subject.fy = event.subject.y;
       }
 
-      function dragged(event: any, d: any) {
-        d.fx = event.x;
-        d.fy = event.y;
+      function dragged(
+        event: d3.D3DragEvent<
+          SVGCircleElement,
+          SimulationNodeDatum,
+          SimulationNodeDatum
+        >
+      ) {
+        event.subject.fx = event.x;
+        event.subject.fy = event.y;
       }
 
-      function dragended(event: any, d: any) {
+      function dragended(
+        event: d3.D3DragEvent<
+          SVGCircleElement,
+          SimulationNodeDatum,
+          SimulationNodeDatum
+        >
+      ) {
         if (!event.active) simulation.alphaTarget(0);
-        d.fx = null;
-        d.fy = null;
+        event.subject.fx = null;
+        event.subject.fy = null;
       }
 
       return d3
-        .drag()
+        .drag<SVGCircleElement, SimulationNodeDatum>()
         .on("start", dragstarted)
         .on("drag", dragged)
         .on("end", dragended);

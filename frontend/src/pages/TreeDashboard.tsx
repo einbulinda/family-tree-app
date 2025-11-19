@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import TreeVisualization from "../components/TreeVisualization";
-import { Individual, Relationship } from "../types";
+import { Individual } from "../types";
 import { logger } from "../utils/logger";
 import api from "../services/api";
+import CustomTree from "../components/CustomTree";
 
 const TreeDashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [individuals, setIndividuals] = useState<Individual[]>([]);
   const [relationships, setRelationships] = useState<any[]>([]);
-  const [selectedIndividual, setSelectedIndividual] =
-    useState<Individual | null>(null);
+  const [selectedIndividual, setSelectedIndividual] = useState<
+    Individual | undefined
+  >(undefined);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,12 +23,15 @@ const TreeDashboard: React.FC = () => {
   const loadTreeData = async () => {
     try {
       setLoading(true);
-      /// Fetch all individuals for the tree
-      const individualsResponse = await api.get("/tree/individuals");
+
+      // Fetch all individuals for the tree
+      const individualsResponse = await api.get<Individual[]>(
+        "/tree/individuals"
+      );
       setIndividuals(individualsResponse.data);
 
       // Fetch all relationships for the tree
-      const relationshipsResponse = await api.get("/tree/relationships");
+      const relationshipsResponse = await api.get<any>("/tree/relationships");
       setRelationships(relationshipsResponse.data);
     } catch (error) {
       logger.error("Error loading tree data", { error });
@@ -36,9 +40,35 @@ const TreeDashboard: React.FC = () => {
     }
   };
 
+  // Find the root individual (someone who is not anyone's child)
+  const findRootIndividual = (): Individual | null => {
+    if (individuals.length === 0) return null;
+
+    // Find all individuals who are targets (children) in child relationships
+    const childIds = new Set(
+      relationships
+        .filter((rel) => rel.type === "child")
+        .map((rel) => rel.target)
+    );
+
+    // Find the first individual who is not a child (i.e., has no parent relationship)
+    const root = individuals.find((ind) => !childIds.has(ind.id));
+
+    // If no root found, return the first individual as fallback
+    return root || individuals[0] || null;
+  };
+
   const handleIndividualClick = (individual: Individual) => {
     setSelectedIndividual(individual);
     navigate(`/profile/${individual.id}`);
+  };
+
+  const handleAddChild = (parent: Individual) => {
+    navigate("/create-profile");
+    logger.info("Add child clicked", {
+      parent: parent.id,
+      name: `${parent.first_name} ${parent.last_name}`,
+    });
   };
 
   if (loading) {
@@ -51,6 +81,8 @@ const TreeDashboard: React.FC = () => {
       </div>
     );
   }
+
+  const rootIndividual = findRootIndividual();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -88,12 +120,14 @@ const TreeDashboard: React.FC = () => {
             </div>
 
             <div className="px-4 py-5 sm:p-6">
-              {individuals.length > 0 ? (
-                <TreeVisualization
-                  individuals={individuals}
+              {individuals.length > 0 && rootIndividual ? (
+                <CustomTree
+                  rootIndividual={rootIndividual}
+                  allIndividuals={individuals}
                   relationships={relationships}
                   selectedIndividual={selectedIndividual}
                   onIndividualClick={handleIndividualClick}
+                  onAddChild={handleAddChild}
                 />
               ) : (
                 <div className="text-center py-12">

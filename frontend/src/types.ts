@@ -38,3 +38,14 @@ export interface Invitation {
   created_at: string;
   invited_by_name: string;
 }
+
+export interface Relationship {
+  id: number;
+  individual_id: number;
+  related_individual_id: number;
+  relationship_type: string;
+  individual_first_name: string;
+  individual_last_name: string;
+  related_first_name: string;
+  related_last_name: string;
+}
